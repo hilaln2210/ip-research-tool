@@ -1,0 +1,36 @@
+  return (
+    <div>
+      <div style={{ marginBottom: 16 }}>
+        <textarea
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          placeholder={'Paste IPs, one per line or comma-separated (max 20)
+8.8.8.8
+1.1.1.1
+...'}
+          rows={6}
+          style={{
+            width: '100%', padding: '10px 14px',
+            background: '#161b22', border: '1px solid #30363d',
+            borderRadius: 6, color: '#e6edf3', fontSize: 14,
+            fontFamily: 'monospace', resize: 'vertical', outline: 'none',
+          }}
+        />
+      </div>
+      <button
+        onClick={analyze}
+        disabled={loading}
+        style={{
+          padding: '10px 24px', background: '#238636',
+          border: 'none', borderRadius: 6, color: '#fff',
+          cursor: 'pointer', fontWeight: 600, fontSize: 14,
+          marginBottom: 24, opacity: loading ? 0.6 : 1,
+        }}
+      >
+        {loading ? 'Analyzing...' : 'Analyze All'}
+      </button>
+
+      {error && (
+        <div style={{ color: '#f85149', marginBottom: 16, fontSize: 13 }}>{error}</div>
+      )}
+

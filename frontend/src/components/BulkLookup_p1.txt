@@ -1,0 +1,31 @@
+import { useState } from 'react'
+
+export default function BulkLookup() {
+  const [input, setInput] = useState('')
+  const [results, setResults] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  async function analyze() {
+    const ips = input.split(/[
+,\s]+/).map(s => s.trim()).filter(Boolean)
+    if (!ips.length) return
+    setLoading(true)
+    setError('')
+    try {
+      const r = await fetch('/api/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ips: ips.slice(0, 20) }),
+      })
+      if (!r.ok) throw new Error('Bulk request failed')
+      setResults(await r.json())
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const scoreColor = (s) => s >= 70 ? '#f0883e' : s >= 40 ? '#d29922' : '#3fb950'
+
