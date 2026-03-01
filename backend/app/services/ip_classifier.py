@@ -137,16 +137,17 @@ def _score_uniqueness(ipapi: dict, whois: dict, rdns: str, special: dict) -> tup
 
     # CIDR block size — larger = more shared
     cidr = whois.get("asn_cidr") or whois.get("network_cidr") or ""
-    net_size = _cidr_size(cidr)
-    if net_size >= 65536:  # /16 or larger
-        score -= 15
-        reasons.append(f"Large IP block ({cidr}, {net_size:,} addresses) — many users")
-    elif net_size >= 4096:  # /20
-        score -= 8
-        reasons.append(f"Medium IP block ({cidr}, {net_size:,} addresses)")
-    elif net_size <= 8:  # /29 or smaller
-        score += 15
-        reasons.append(f"Very small IP block ({cidr}, {net_size} addresses) — likely dedicated")
+    if cidr:
+        net_size = _cidr_size(cidr)
+        if net_size >= 65536:  # /16 or larger
+            score -= 15
+            reasons.append(f"Large IP block ({cidr}, {net_size:,} addresses) — many users")
+        elif net_size >= 4096:  # /20
+            score -= 8
+            reasons.append(f"Medium IP block ({cidr}, {net_size:,} addresses)")
+        elif 0 < net_size <= 8:  # /29 or smaller
+            score += 15
+            reasons.append(f"Very small IP block ({cidr}, {net_size} addresses) — likely dedicated")
 
     # --- Raises uniqueness ---
     for kw in RESIDENTIAL_KEYWORDS:
