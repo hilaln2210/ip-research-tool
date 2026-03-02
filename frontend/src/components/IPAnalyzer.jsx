@@ -133,7 +133,7 @@ function ResultCard({ data }) {
       </div>
 
       {/* Reputation */}
-      {data.reputation && <ReputationPanel rep={data.reputation} />}
+      {data.reputation && <ReputationPanel reputation={data.reputation} />}
     </div>
   )
 }
