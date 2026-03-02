@@ -235,7 +235,7 @@ async def classify_ip(ip_str: str) -> dict:
             "city": ipapi.get("city", ""),
         },
         "network": {
-            "asn": whois.get("asn") or ipapi.get("as", "").split()[0].replace("AS", ""),
+            "asn": whois.get("asn") or (ipapi.get("as", "").split() + [""])[0].replace("AS", ""),
             "asn_name": whois.get("asn_description") or ipapi.get("asname", ""),
             "cidr": whois.get("asn_cidr") or "",
             "network_name": whois.get("network_name", ""),
