@@ -199,14 +199,21 @@ async def classify_ip(ip_str: str) -> dict:
     # 1. Special ranges (sync, fast)
     special = _classify_private(ip_str)
 
-    # 2. Parallel async + thread lookups
+    # 2. Parallel async + thread lookups (with timeouts to prevent hangs)
     loop = asyncio.get_event_loop()
     async with httpx.AsyncClient() as client:
-        whois_task = loop.run_in_executor(_executor, _whois_lookup, ip_str)
-        rdns_task = loop.run_in_executor(_executor, _reverse_dns, ip_str)
+        whois_task = asyncio.wait_for(
+            loop.run_in_executor(_executor, _whois_lookup, ip_str), timeout=8.0
+        )
+        rdns_task = asyncio.wait_for(
+            loop.run_in_executor(_executor, _reverse_dns, ip_str), timeout=4.0
+        )
         ipapi_task = _ipapi_lookup(ip_str, client)
 
-        whois, rdns, ipapi = await asyncio.gather(whois_task, rdns_task, ipapi_task)
+        results = await asyncio.gather(whois_task, rdns_task, ipapi_task, return_exceptions=True)
+        whois = results[0] if not isinstance(results[0], Exception) else {"error": "timeout"}
+        rdns  = results[1] if not isinstance(results[1], Exception) else ""
+        ipapi = results[2] if not isinstance(results[2], Exception) else {}
 
     # 3. Score
     uniqueness_score, reasons = _score_uniqueness(ipapi, whois, rdns, special)
