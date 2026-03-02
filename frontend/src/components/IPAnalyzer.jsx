@@ -3,7 +3,7 @@ import ScoreGauge from './ScoreGauge'
 import FlagBadge from './FlagBadge'
 import ReputationPanel from './ReputationPanel'
 
-const API = 'http://localhost:8000/api'
+const API = '/api'
 
 export default function IPAnalyzer() {
   const [input, setInput] = useState('')
@@ -18,7 +18,7 @@ export default function IPAnalyzer() {
     setError('')
     setData(null)
     try {
-      const r = await fetch(`${API}/analyze/${encodeURIComponent(ip)}?reputation=true`)
+      const r = await fetch(`${API}/analyze/${encodeURIComponent(ip)}?include_reputation=true`)
       if (!r.ok) {
         const e = await r.json()
         throw new Error(e.detail || r.statusText)
@@ -125,7 +125,7 @@ function ResultCard({ data }) {
           ['Network', data.network?.network_name],
         ]} />
         <InfoBlock title="Geolocation" rows={[
-          ['Country', `${data.geo?.country} (${data.geo?.country_code})`],
+          ['Country', data.geo?.country ? `${data.geo.country} (${data.geo.country_code})` : null],
           ['Region', data.geo?.region],
           ['City', data.geo?.city],
           ['Reverse DNS', data.reverse_dns || '—'],

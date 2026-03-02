@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-const API = 'http://localhost:8000/api'
+const API = '/api'
 
 const SCORE_COLOR = s => s >= 70 ? '#22c55e' : s >= 40 ? '#f59e0b' : '#ef4444'
 const TYPE_ICON = t => {
@@ -33,7 +33,7 @@ export default function BulkAnalyzer() {
       })
       if (!r.ok) throw new Error((await r.json()).detail || r.statusText)
       const data = await r.json()
-      setResults(data.results)
+      setResults(data)
     } catch (e) {
       setError(e.message)
     } finally {
