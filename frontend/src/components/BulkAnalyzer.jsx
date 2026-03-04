@@ -33,7 +33,7 @@ export default function BulkAnalyzer() {
       })
       if (!r.ok) throw new Error((await r.json()).detail || r.statusText)
       const data = await r.json()
-      setResults(data)
+      setResults(data.results || [])
     } catch (e) {
       setError(e.message)
     } finally {
@@ -78,8 +78,33 @@ export default function BulkAnalyzer() {
         </div>
       )}
 
-      {results && (
+      {results && results.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: 12, color: '#64748b' }}>{results.length} results</span>
+            <button
+              onClick={() => {
+                const headers = 'IP,Type,ISP,Score,Attribution,Country\n'
+                const rows = results
+                  .filter(r => !r.error)
+                  .map(r => [r.ip, r.ip_type, (r.network?.isp || r.network?.org || r.network?.asn_name || '').replace(/,/g, ';'), r.uniqueness_score ?? '', r.attribution_reliability ?? '', r.geo?.country ?? ''])
+                  .map(row => row.map(cell => `"${String(cell)}"`).join(','))
+                  .join('\n')
+                const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8' })
+                const a = document.createElement('a')
+                a.href = URL.createObjectURL(blob)
+                a.download = `ip-research-${new Date().toISOString().slice(0, 10)}.csv`
+                a.click()
+                URL.revokeObjectURL(a.href)
+              }}
+              style={{
+                padding: '6px 14px', borderRadius: 6, border: '1px solid #334155',
+                background: '#1e293b', color: '#94a3b8', fontSize: 12, cursor: 'pointer',
+              }}
+            >
+              📥 Export CSV
+            </button>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 80px 220px', gap: 8, padding: '8px 14px', fontSize: 11, color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
             <span>IP</span><span>Type</span><span>ISP / Org</span><span>Score</span><span>Attribution</span>
           </div>

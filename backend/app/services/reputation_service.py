@@ -1,6 +1,8 @@
 """
-Reputation service - aggregates threat intel from AbuseIPDB, Shodan, VirusTotal.
-API keys read from .env; gracefully skips sources with no key.
+Reputation service - aggregates threat intel from multiple sources.
+- Basic (ip-api): always available, no key
+- AlienVault OTX: free at otx.alienvault.com, optional key for higher limits
+- AbuseIPDB, Shodan, VirusTotal: require API keys
 """
 
 import os
@@ -13,6 +15,7 @@ load_dotenv()
 ABUSEIPDB_KEY = os.getenv("ABUSEIPDB_KEY", "")
 SHODAN_KEY = os.getenv("SHODAN_KEY", "")
 VIRUSTOTAL_KEY = os.getenv("VIRUSTOTAL_KEY", "")
+OTX_API_KEY = os.getenv("OTX_API_KEY", "")
 
 ABUSE_CAT_MAP = {
     3: "Fraud Orders", 4: "DDoS Attack", 5: "FTP Brute-Force",
@@ -82,6 +85,36 @@ async def _shodan(ip, client):
         return {"available": False, "error": str(e)}
 
 
+async def _otx(ip, client):
+    """AlienVault OTX - free, no API key required. Key = higher rate limits."""
+    headers = {"User-Agent": "IP-Research-Tool/1.0"}
+    if OTX_API_KEY:
+        headers["X-OTX-API-KEY"] = OTX_API_KEY
+    try:
+        r = await client.get(
+            f"https://otx.alienvault.com/api/v1/indicators/IPv4/{ip}/general",
+            headers=headers,
+            timeout=10.0
+        )
+        if r.status_code != 200:
+            return {"available": False, "reason": f"OTX returned {r.status_code}"}
+        d = r.json()
+        pulse_info = d.get("pulse_info", {})
+        pulse_count = pulse_info.get("count", 0)
+        pulses = pulse_info.get("pulses", [])[:5]
+        return {
+            "available": True,
+            "pulse_count": pulse_count,
+            "pulses": [p.get("name", "?") for p in pulses if p.get("name")],
+            "country_code": d.get("country_code", ""),
+            "country_name": d.get("country_name", ""),
+            "asn": d.get("asn", ""),
+            "validation": [v.get("name", "") for v in d.get("validation", [])[:3] if v.get("name")],
+        }
+    except Exception as e:
+        return {"available": False, "error": str(e)}
+
+
 async def _virustotal(ip, client):
     if not VIRUSTOTAL_KEY:
         return {"available": False, "reason": "No VIRUSTOTAL_KEY configured"}
@@ -114,10 +147,11 @@ async def _virustotal(ip, client):
 
 async def get_reputation(ip):
     async with httpx.AsyncClient() as client:
-        abuse, shodan, vt = await asyncio.gather(
+        abuse, shodan, vt, otx = await asyncio.gather(
             _abuseipdb(ip, client),
             _shodan(ip, client),
             _virustotal(ip, client),
+            _otx(ip, client),
         )
 
     threat_score = 0
@@ -137,6 +171,12 @@ async def get_reputation(ip):
     if shodan.get("available") and shodan.get("vulns"):
         threat_reasons.append(f"Shodan: {len(shodan['vulns'])} known CVEs on open ports")
 
+    # AlienVault OTX - pulse_count = threat indicators (malware, attacks, etc.)
+    if otx.get("available") and otx.get("pulse_count", 0) > 0:
+        pc = otx["pulse_count"]
+        threat_score = max(threat_score, min(100, pc * 3))
+        threat_reasons.append(f"OTX: {pc} threat pulse(s) referencing this IP")
+
     return {
         "threat_score": threat_score,
         "threat_reasons": threat_reasons,
@@ -144,5 +184,6 @@ async def get_reputation(ip):
             "abuseipdb": abuse,
             "shodan": shodan,
             "virustotal": vt,
+            "otx": otx,
         }
     }

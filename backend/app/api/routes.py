@@ -63,6 +63,19 @@ async def analyze_ip(ip: str, reputation: bool = Query(True)):
 
         result = {**classification}
         if rep:
+            # Basic intel from ip-api (no key) - merged from classification
+            flags = classification.get("flags", {})
+            rep["sources"]["basic"] = {
+                "available": True,
+                "proxy": flags.get("is_proxy", False),
+                "hosting": flags.get("is_hosting", False),
+                "mobile": flags.get("is_mobile", False),
+            }
+            if flags.get("is_proxy") and rep["threat_score"] < 30:
+                rep["threat_score"] = max(rep["threat_score"], 25)
+                if not any("Proxy" in r for r in (rep.get("threat_reasons") or [])):
+                    rep["threat_reasons"] = rep.get("threat_reasons") or []
+                    rep["threat_reasons"].insert(0, "Proxy/VPN detected (ip-api)")
             result["reputation"] = rep
             # Adjust uniqueness downward if high threat score on a shared IP
             if rep["threat_score"] > 50 and classification["uniqueness_score"] < 40:
@@ -96,7 +109,8 @@ async def bulk_analyze(body: BulkRequest, reputation: bool = Query(False)):
     output = []
     for ip, res in zip(ips, results):
         if isinstance(res, Exception):
-            output.append({"ip": ip, "error": str(res)})
+            err_msg = str(getattr(res, "detail", res))
+            output.append({"ip": ip, "error": err_msg})
         else:
             output.append(res)
 
