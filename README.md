@@ -1,5 +1,7 @@
 # IP Research Tool
 
+[![CI](https://github.com/hilaln2210/ip-research-tool/actions/workflows/ci.yml/badge.svg)](https://github.com/hilaln2210/ip-research-tool/actions/workflows/ci.yml)
+
 A dark-themed web app for classifying, scoring, and attributing IP addresses — built for security analysts, incident responders, and threat hunters. Analyze a single IP in depth or scan up to 20 at once in bulk.
 
 ## Screenshots
